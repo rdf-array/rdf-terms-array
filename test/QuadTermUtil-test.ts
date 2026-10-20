@@ -995,3 +995,181 @@ describe('QuadTermUtil', () => {
     });
   });
 });
+
+describe('QuadTermUtil for RDF- sequences', () => {
+  const inner = DF.sequence([ DF.literal('e10'), DF.variable('v') ]);
+  const seq = DF.sequence([ DF.namedNode('e0'), inner, DF.blankNode('b') ]);
+  const quadWithSeq: RDF.BaseQuad = DF.quad(DF.namedNode('s'), DF.namedNode('p'), seq, DF.namedNode('g'));
+  const seqData = DF.sequence([ DF.namedNode('e0'), DF.sequence([ DF.literal('e10'), DF.literal('x') ]), DF.blankNode('b') ]);
+  const quadData: RDF.BaseQuad = DF.quad(DF.namedNode('s'), DF.namedNode('p'), seqData, DF.namedNode('g'));
+
+  describe('#isCompoundTerm', () => {
+    it('should be true for quads and sequences only', () => {
+      expect(QuadTermUtil.isCompoundTerm(quadWithSeq)).toBe(true);
+      expect(QuadTermUtil.isCompoundTerm(seq)).toBe(true);
+      expect(QuadTermUtil.isCompoundTerm(DF.namedNode('s'))).toBe(false);
+      expect(QuadTermUtil.isCompoundTerm(DF.literal('s'))).toBe(false);
+    });
+  });
+
+  describe('#getChildTerms', () => {
+    it('should give the quad terms of a quad with their names', () => {
+      expect(QuadTermUtil.getChildTerms(quadWithSeq)).toEqual([
+        [ 'subject', DF.namedNode('s') ],
+        [ 'predicate', DF.namedNode('p') ],
+        [ 'object', seq ],
+        [ 'graph', DF.namedNode('g') ],
+      ]);
+    });
+
+    it('should give the elements of a sequence with their indexes', () => {
+      expect(QuadTermUtil.getChildTerms(seq)).toEqual([
+        [ 0, DF.namedNode('e0') ],
+        [ 1, inner ],
+        [ 2, DF.blankNode('b') ],
+      ]);
+      expect(QuadTermUtil.getChildTerms(DF.sequence([]))).toEqual([]);
+    });
+  });
+
+  describe('#getTermsNested', () => {
+    it('should list the leaf terms inside sequences', () => {
+      expect(QuadTermUtil.getTermsNested(quadWithSeq)).toEqual([
+        DF.namedNode('s'),
+        DF.namedNode('p'),
+        DF.namedNode('e0'),
+        DF.literal('e10'),
+        DF.variable('v'),
+        DF.blankNode('b'),
+        DF.namedNode('g'),
+      ]);
+    });
+  });
+
+  describe('#forEachTermsNested', () => {
+    it('should visit the leaf terms with their key paths', () => {
+      const visited: [RDF.Term, QuadTermUtil.NestedTermKey[]][] = [];
+      QuadTermUtil.forEachTermsNested(quadWithSeq, (value, keys) => visited.push([ value, keys ]));
+      expect(visited).toEqual([
+        [ DF.namedNode('s'), [ 'subject' ]],
+        [ DF.namedNode('p'), [ 'predicate' ]],
+        [ DF.namedNode('e0'), [ 'object', 0 ]],
+        [ DF.literal('e10'), [ 'object', 1, 0 ]],
+        [ DF.variable('v'), [ 'object', 1, 1 ]],
+        [ DF.blankNode('b'), [ 'object', 2 ]],
+        [ DF.namedNode('g'), [ 'graph' ]],
+      ]);
+    });
+  });
+
+  describe('#filterTermsNested', () => {
+    it('should find terms inside sequences', () => {
+      expect(QuadTermUtil.filterTermsNested(quadWithSeq, term => term.termType === 'Variable'))
+        .toEqual([ DF.variable('v') ]);
+    });
+  });
+
+  describe('#filterQuadTermNamesNested', () => {
+    it('should give the key paths into sequences', () => {
+      expect(QuadTermUtil.filterQuadTermNamesNested(quadWithSeq, term => term.termType === 'Variable'))
+        .toEqual([[ 'object', 1, 1 ]]);
+    });
+  });
+
+  describe('#mapTermsNested', () => {
+    it('should rebuild sequences around mapped elements', () => {
+      expect(QuadTermUtil.mapTermsNested(quadWithSeq, term => term.termType === 'Variable' ? DF.literal('x') : term))
+        .toEqual(quadData);
+    });
+
+    it('should fail for a data factory without sequence()', () => {
+      const dataFactory: RDF.DataFactory = <any> { quad: DF.quad.bind(DF) };
+      expect(() => QuadTermUtil.mapTermsNested(quadWithSeq, term => term, dataFactory))
+        .toThrow(`Missing 'sequence()' method on the given DataFactory`);
+    });
+  });
+
+  describe('#reduceTermsNested', () => {
+    it('should reduce over the leaf terms inside sequences', () => {
+      expect(QuadTermUtil.reduceTermsNested(quadWithSeq, (count: number) => count + 1, 0)).toBe(7);
+    });
+  });
+
+  describe('#everyTermsNested', () => {
+    it('should check the leaf terms inside sequences', () => {
+      expect(QuadTermUtil.everyTermsNested(quadWithSeq, term => term.termType !== 'Variable')).toBe(false);
+      expect(QuadTermUtil.everyTermsNested(quadData, term => term.termType !== 'Variable')).toBe(true);
+    });
+  });
+
+  describe('#someTermsNested', () => {
+    it('should check the leaf terms inside sequences', () => {
+      expect(QuadTermUtil.someTermsNested(quadWithSeq, term => term.termType === 'Variable')).toBe(true);
+      expect(QuadTermUtil.someTermsNested(quadData, term => term.termType === 'Variable')).toBe(false);
+    });
+  });
+
+  describe('#getValueNestedPath', () => {
+    it('should follow element indexes into sequences', () => {
+      expect(QuadTermUtil.getValueNestedPath(quadWithSeq, [ 'object', 1, 1 ])).toEqual(DF.variable('v'));
+      expect(QuadTermUtil.getValueNestedPath(quadWithSeq, [ 'object', 1 ])).toEqual(inner);
+    });
+
+    it('should accept indexes spelled as strings', () => {
+      expect(QuadTermUtil.getValueNestedPath(quadWithSeq, [ 'object', <any> '1', <any> '0' ])).toEqual(DF.literal('e10'));
+    });
+
+    it('should fail for a missing element or a non-compound term', () => {
+      expect(() => QuadTermUtil.getValueNestedPath(quadWithSeq, [ 'object', 5 ]))
+        .toThrow('Tried to get element 5 from a sequence of 3 elements');
+      expect(() => QuadTermUtil.getValueNestedPath(quadWithSeq, [ 'subject', 0 ]))
+        .toThrow('Tried to get 0 from term of type NamedNode');
+    });
+  });
+
+  describe('#matchTerm and #matchSequence', () => {
+    it('should match a sequence against a sequence pattern with variables', () => {
+      expect(QuadTermUtil.matchTerm(seqData, seq)).toBe(true);
+      expect(QuadTermUtil.matchSequence(seqData, seq)).toBe(true);
+      expect(QuadTermUtil.matchTerm(seqData, DF.sequence([]))).toBe(false);
+      expect(QuadTermUtil.matchTerm(seqData, DF.sequence([ DF.variable('a') ]))).toBe(false);
+      expect(QuadTermUtil.matchTerm(seqData, DF.variable('a'))).toBe(true);
+      expect(QuadTermUtil.matchTerm(DF.namedNode('e0'), seq)).toBe(false);
+    });
+
+    it('should match quads holding sequences', () => {
+      expect(QuadTermUtil.matchPattern(quadData, undefined, undefined, seq)).toBe(true);
+      expect(QuadTermUtil.matchPatternComplete(quadData, quadWithSeq)).toBe(true);
+      expect(QuadTermUtil.matchPatternComplete(quadData, DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.sequence([]))))
+        .toBe(false);
+    });
+  });
+
+  describe('#matchPatternMappings', () => {
+    const pair = (a: RDF.Term, b: RDF.Term) => DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.sequence([ a, b ]));
+
+    it('should bind variables inside sequences consistently', () => {
+      const pattern = pair(DF.variable('a'), DF.variable('a'));
+      expect(QuadTermUtil.matchPatternMappings(pair(DF.literal('x'), DF.literal('x')), pattern)).toBe(true);
+      expect(QuadTermUtil.matchPatternMappings(pair(DF.literal('x'), DF.literal('y')), pattern)).toBe(false);
+      expect(QuadTermUtil.matchPatternMappings(pair(DF.literal('x'), DF.literal('x')), pattern, { returnMappings: true }))
+        .toEqual({ a: DF.literal('x') });
+    });
+
+    it('should relate variables inside and outside sequences', () => {
+      const pattern = DF.quad(DF.variable('a'), DF.namedNode('p'), DF.sequence([ DF.variable('a') ]));
+      expect(QuadTermUtil.matchPatternMappings(
+        DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.sequence([ DF.namedNode('s') ])), pattern)).toBe(true);
+      expect(QuadTermUtil.matchPatternMappings(
+        DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.sequence([ DF.namedNode('o') ])), pattern)).toBe(false);
+    });
+
+    it('should not match sequences of other lengths or non-sequences', () => {
+      const pattern = pair(DF.variable('a'), DF.variable('b'));
+      expect(QuadTermUtil.matchPatternMappings(
+        DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.sequence([ DF.literal('x') ])), pattern)).toBe(false);
+      expect(QuadTermUtil.matchPatternMappings(
+        DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.literal('x')), pattern)).toBe(false);
+    });
+  });
+});

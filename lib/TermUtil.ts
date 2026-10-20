@@ -6,7 +6,7 @@ import { termToString } from 'rdf-string';
  * @see RDF.Term
  * @type {[string , string , string , string , string, string]}
  */
-export const TERM_TYPES = [ 'NamedNode', 'BlankNode', 'Literal', 'Variable', 'DefaultGraph', 'Quad' ];
+export const TERM_TYPES = [ 'NamedNode', 'BlankNode', 'Literal', 'Variable', 'DefaultGraph', 'Quad', 'Sequence' ];
 
 /*
  * Utility methods for handling RDFJS terms.
@@ -29,11 +29,11 @@ export function uniqTerms<T extends RDF.Term>(terms: T[]): T[] {
 /**
  * Find all terms of the given type in the given array.
  * @param {Term[]} terms An array of RDFJS terms.
- * @param {"NamedNode" | "BlankNode" | "Literal" | "Variable" | "DefaultGraph" | "Quad"} termType A term type.
+ * @param {"NamedNode" | "BlankNode" | "Literal" | "Variable" | "DefaultGraph" | "Quad" | "Sequence"} termType A term type.
  * @return {Term[]} A new array with elements from the given array only containing elements of the given type.
  */
 export function getTermsOfType(terms: RDF.Term[],
-                               termType: "NamedNode" | "BlankNode" | "Literal" | "Variable" | "DefaultGraph" | "Quad")
+                               termType: "NamedNode" | "BlankNode" | "Literal" | "Variable" | "DefaultGraph" | "Quad" | "Sequence")
 : RDF.Term[] {
   return terms.filter((term: RDF.Term) => term.termType === termType);
 }
@@ -90,4 +90,13 @@ export function getDefaultGraphs(terms: RDF.Term[]): RDF.DefaultGraph[] {
  */
 export function getQuads(terms: RDF.Term[]): RDF.BaseQuad[] {
   return <RDF.BaseQuad[]> getTermsOfType(terms, 'Quad');
+}
+
+/**
+ * RDF-: get all sequences from the given array.
+ * @param {Term[]} terms An array of terms of any type.
+ * @return {Sequence[]} A new array with elements from the given array only containing sequences.
+ */
+export function getSequences(terms: RDF.Term[]): RDF.Sequence[] {
+  return <RDF.Sequence[]> getTermsOfType(terms, 'Sequence');
 }

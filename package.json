@@ -9,8 +9,8 @@
     "quad",
     "triple"
   ],
-  "main": "index.js",
-  "typings": "index",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
   "repository": "git@github.com:rubensworks/rdf-terms.js.git",
   "author": "Ruben Taelman <rubensworks@gmail.com>",
   "funding": {
@@ -23,12 +23,9 @@
   "homepage": "https://github.com/rubensworks/rdf-terms.js#readme",
   "license": "MIT",
   "files": [
-    "lib/**/*.d.ts",
-    "lib/**/*.js",
-    "lib/**/*.js.map",
-    "index.d.ts",
-    "index.js.map",
-    "index.js"
+    "dist/**/*.d.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map"
   ],
   "pre-commit": [
     "build",
@@ -36,8 +33,8 @@
     "test"
   ],
   "dependencies": {
-    "rdf-data-factory": "^2.0.0",
-    "rdf-string": "^2.0.0"
+    "rdf-data-factory": "github:rdf-array/rdf-data-factory-array#rdf-sequences",
+    "rdf-string": "github:rdf-array/rdf-string-array#rdf-sequences"
   },
   "devDependencies": {
     "@types/jest": "^28.0.0",
@@ -85,5 +82,11 @@
     "prepare": "npm run build",
     "version": "manual-git-changelog onversion"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "resolutions": {
+    "@rdfjs/types": "github:rdf-array/types-array#rdf-sequences",
+    "rdf-data-factory": "github:rdf-array/rdf-data-factory-array#rdf-sequences",
+    "rdf-string": "github:rdf-array/rdf-string-array#rdf-sequences"
+  },
+  "types": "dist/index.d.ts"
 }

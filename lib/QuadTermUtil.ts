@@ -25,6 +25,59 @@ export const QUAD_TERM_NAMES: QuadTermName[] = ['subject', 'predicate', 'object'
 export const TRIPLE_TERM_NAMES: QuadTermName[] = ['subject', 'predicate', 'object'];
 
 /**
+ * RDF-: a step in a path into a nested term:
+ * a quad term name inside a quoted triple, or an element index inside a sequence.
+ */
+export type NestedTermKey = QuadTermName | number;
+
+/**
+ * RDF-: a term that holds other terms: a quoted triple or a sequence.
+ */
+export type CompoundTerm = RDF.BaseQuad | RDF.Sequence;
+
+/**
+ * RDF-: check whether a term holds other terms (a quoted triple or a sequence).
+ * @param {Term} term An RDFJS term.
+ */
+export function isCompoundTerm(term: RDF.Term): term is CompoundTerm {
+  return term.termType === 'Quad' || term.termType === 'Sequence';
+}
+
+/**
+ * RDF-: the direct children of a quoted triple or a sequence, each with its key.
+ * @param {CompoundTerm} term A quoted triple or a sequence.
+ */
+export function getChildTerms(term: CompoundTerm): [NestedTermKey, RDF.Term][] {
+  return term.termType === 'Quad' ?
+    QUAD_TERM_NAMES.map((key): [NestedTermKey, RDF.Term] => [ key, term[key] ]) :
+    term.elements.map((element, index): [NestedTermKey, RDF.Term] => [ index, element ]);
+}
+
+/**
+ * RDF-: rebuild a quoted triple or a sequence from (mapped) children, in the order of {@link getChildTerms}.
+ */
+function buildCompoundTerm(term: CompoundTerm, children: RDF.Term[], dataFactory: RDF.DataFactory<any>): RDF.Term {
+  if (term.termType === 'Quad') {
+    return dataFactory.quad(children[0], children[1], children[2], children[3]);
+  }
+  if (!dataFactory.sequence) {
+    throw new Error(`Missing 'sequence()' method on the given DataFactory`);
+  }
+  return dataFactory.sequence(children);
+}
+
+/**
+ * RDF-: a sequence matches a sequence pattern of the same length whose elements each match
+ * (see {@link matchTerm}).
+ * @param {Sequence} sequence A sequence (can not contain variables).
+ * @param {Sequence} pattern A sequence pattern (can contain variables).
+ */
+export function matchSequence(sequence: RDF.Sequence, pattern: RDF.Sequence): boolean {
+  return sequence.elements.length === pattern.elements.length &&
+    pattern.elements.every((element, index) => matchTerm(sequence.elements[index], element));
+}
+
+/**
  * An RDFJS term with a quad term name key.
  */
 export interface INamedTerm {
@@ -64,13 +117,21 @@ export function getTerms(quad: RDF.BaseQuad, ignoreDefaultGraph?: boolean): RDF.
 export function getTermsNested(quad: RDF.BaseQuad, ignoreDefaultGraph?: boolean): RDF.Term[] {
   const terms: RDF.Term[] = [];
   for (const term of getTerms(quad, ignoreDefaultGraph)) {
-    if (term.termType === 'Quad') {
-      getTermsNested(term, ignoreDefaultGraph).forEach(subTerm => terms.push(subTerm));
-    } else {
-      terms.push(term);
-    }
+    collectLeafTerms(term, terms, ignoreDefaultGraph);
   }
   return terms;
+}
+
+function collectLeafTerms(term: RDF.Term, terms: RDF.Term[], ignoreDefaultGraph?: boolean) {
+  if (isCompoundTerm(term)) {
+    for (const [ key, child ] of getChildTerms(term)) {
+      if (!(ignoreDefaultGraph && key === 'graph' && child.termType === 'DefaultGraph')) {
+        collectLeafTerms(child, terms, ignoreDefaultGraph);
+      }
+    }
+  } else {
+    terms.push(term);
+  }
 }
 
 /**
@@ -126,33 +187,21 @@ export function forEachTerms(quad: RDF.BaseQuad,
 }
 
 /**
- * Iterates over each leaf term, while recursing into quoted triples.
+ * Iterates over each leaf term, while recursing into quoted triples and (RDF-) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName} cb A callback function.
  * @param QuadTermName[] keys The current key path.
  */
 export function forEachTermsNested(quad: RDF.BaseQuad,
-                                   cb: (value: RDF.Term, keys: QuadTermName[]) => void,
-                                   keys: QuadTermName[] = []) {
-  if (quad.subject.termType === 'Quad') {
-    forEachTermsNested(quad.subject, cb, [ ...keys, 'subject' ]);
-  } else {
-    cb(quad.subject,   [ ...keys, 'subject' ]);
-  }
-  if (quad.predicate.termType === 'Quad') {
-    forEachTermsNested(quad.predicate, cb, [ ...keys, 'predicate' ]);
-  } else {
-    cb(quad.predicate,   [ ...keys, 'predicate' ]);
-  }
-  if (quad.object.termType === 'Quad') {
-    forEachTermsNested(quad.object, cb, [ ...keys, 'object' ]);
-  } else {
-    cb(quad.object,   [ ...keys, 'object' ]);
-  }
-  if (quad.graph.termType === 'Quad') {
-    forEachTermsNested(quad.graph, cb, [ ...keys, 'graph' ]);
-  } else {
-    cb(quad.graph,   [ ...keys, 'graph' ]);
+                                   cb: (value: RDF.Term, keys: NestedTermKey[]) => void,
+                                   keys: NestedTermKey[] = []) {
+  for (const [ key, child ] of getChildTerms(quad)) {
+    const path = [ ...keys, key ];
+    if (isCompoundTerm(child)) {
+      forEachTermsNested(<RDF.BaseQuad> child, cb, path);
+    } else {
+      cb(child, path);
+    }
   }
 }
 
@@ -180,43 +229,20 @@ export function filterTerms(quad: RDF.BaseQuad, filter: (value: RDF.Term, key: Q
 }
 
 /**
- * Get all terms in the given quad that return true on the given filter function, while recursing into quoted triples.
+ * Get all terms in the given quad that return true on the given filter function, while recursing into quoted triples and (RDF-) sequences.
  * @param {BaseQuad} quad A quad.
  * @param {(value: Term, key: QuadTermName) => boolean} filter A filter callback.
  * @param QuadTermName[] keys The current key path.
  * @return {Term[]} The list of matching terms.
  */
-export function filterTermsNested(quad: RDF.BaseQuad, filter: (value: RDF.Term, keys: QuadTermName[]) => boolean,
-                                  keys: QuadTermName[] = []): RDF.Term[] {
-  let terms: RDF.Term[] = [];
-  if (quad.subject.termType === 'Quad') {
-    terms = [ ...terms, ...filterTermsNested(quad.subject, filter, [ ...keys, 'subject' ]) ];
-  } else {
-    if (filter(quad.subject, [ ...keys, 'subject' ])) {
-      terms.push(quad.subject);
+export function filterTermsNested(quad: RDF.BaseQuad, filter: (value: RDF.Term, keys: NestedTermKey[]) => boolean,
+                                  keys: NestedTermKey[] = []): RDF.Term[] {
+  const terms: RDF.Term[] = [];
+  forEachTermsNested(quad, (value, path) => {
+    if (filter(value, path)) {
+      terms.push(value);
     }
-  }
-  if (quad.predicate.termType === 'Quad') {
-    terms = [ ...terms, ...filterTermsNested(quad.predicate, filter, [ ...keys, 'predicate' ]) ];
-  } else {
-    if (filter(quad.predicate, [ ...keys, 'predicate' ])) {
-      terms.push(quad.predicate);
-    }
-  }
-  if (quad.object.termType === 'Quad') {
-    terms = [ ...terms, ...filterTermsNested(quad.object, filter, [ ...keys, 'object' ]) ];
-  } else {
-    if (filter(quad.object, [...keys, 'object'])) {
-      terms.push(quad.object);
-    }
-  }
-  if (quad.graph.termType === 'Quad') {
-    terms = [ ...terms, ...filterTermsNested(quad.graph, filter, [ ...keys, 'graph' ]) ];
-  } else {
-    if (filter(quad.graph, [...keys, 'graph'])) {
-      terms.push(quad.graph);
-    }
-  }
+  }, keys);
   return terms;
 }
 
@@ -245,48 +271,21 @@ export function filterQuadTermNames(quad: RDF.BaseQuad,
 }
 
 /**
- * Get all quad term names in the given quad that return true on the given filter function, while recursing into quoted triples.
+ * Get all quad term names in the given quad that return true on the given filter function, while recursing into quoted triples and (RDF-) sequences.
  * @param {BaseQuad} quad A quad.
  * @param {(value: Term, key: QuadTermName, all: INamedTerm[]) => boolean} filter A filter callback.
  * @param QuadTermName[] keys The current key path.
  * @return {QuadTermName[]} The list of matching quad term names.
  */
 export function filterQuadTermNamesNested(quad: RDF.BaseQuad,
-                                          filter: (value: RDF.Term, keys: QuadTermName[]) => boolean,
-                                          keys: QuadTermName[] = []): QuadTermName[][] {
-  let names: QuadTermName[][] = [];
-  const keysS: QuadTermName[] = [ ...keys, 'subject' ];
-  if (quad.subject.termType === 'Quad') {
-    names = [ ...names, ...filterQuadTermNamesNested(quad.subject, filter, keysS) ];
-  } else {
-    if (filter(quad.subject, keysS)) {
-      names.push(keysS);
+                                          filter: (value: RDF.Term, keys: NestedTermKey[]) => boolean,
+                                          keys: NestedTermKey[] = []): NestedTermKey[][] {
+  const names: NestedTermKey[][] = [];
+  forEachTermsNested(quad, (value, path) => {
+    if (filter(value, path)) {
+      names.push(path);
     }
-  }
-  const keysP: QuadTermName[] = [ ...keys, 'predicate' ];
-  if (quad.predicate.termType === 'Quad') {
-    names = [ ...names, ...filterQuadTermNamesNested(quad.predicate, filter, keysP) ];
-  } else {
-    if (filter(quad.predicate, keysP)) {
-      names.push(keysP);
-    }
-  }
-  const keysO: QuadTermName[] = [ ...keys, 'object' ];
-  if (quad.object.termType === 'Quad') {
-    names = [ ...names, ...filterQuadTermNamesNested(quad.object, filter, keysO) ];
-  } else {
-    if (filter(quad.object, keysO)) {
-      names.push(keysO);
-    }
-  }
-  const keysG: QuadTermName[] = [ ...keys, 'graph' ];
-  if (quad.graph.termType === 'Quad') {
-    names = [ ...names, ...filterQuadTermNamesNested(quad.graph, filter, keysG) ];
-  } else {
-    if (filter(quad.graph, keysG)) {
-      names.push(keysG);
-    }
-  }
+  }, keys);
   return names;
 }
 
@@ -310,7 +309,7 @@ export function mapTerms<Q extends RDF.BaseQuad = RDF.Quad>(quad: Q,
 }
 
 /**
- * Map all terms of a quad, while recursing into quoted triples.
+ * Map all terms of a quad, while recursing into quoted triples and (RDF-) sequences.
  * @param {Quad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName) => Term} mapper A mapper function.
  * @param {RDF.DataFactory} dataFactory A custom data factory to create quads.
@@ -319,23 +318,20 @@ export function mapTerms<Q extends RDF.BaseQuad = RDF.Quad>(quad: Q,
  * @template Q The type of quad, defaults to RDF.Quad.
  */
 export function mapTermsNested<Q extends RDF.BaseQuad = RDF.Quad>(quad: Q,
-                                                                  mapper: (term: RDF.Term, keys: QuadTermName[]) => RDF.Term,
+                                                                  mapper: (term: RDF.Term, keys: NestedTermKey[]) => RDF.Term,
                                                                   dataFactory?: RDF.DataFactory<Q>,
-                                                                  keys: QuadTermName[] = []): Q {
-  return (dataFactory || <RDF.DataFactory<Q>> <any> DF).quad(
-    quad.subject.termType === 'Quad' ?
-      mapTermsNested(quad.subject, mapper, dataFactory, [ ...keys, 'subject' ]) :
-      mapper(quad.subject, [ ...keys, 'subject' ]),
-    quad.predicate.termType === 'Quad' ?
-      mapTermsNested(quad.predicate, mapper, dataFactory, [ ...keys, 'predicate' ]) :
-      mapper(quad.predicate, [ ...keys, 'predicate' ]),
-    quad.object.termType === 'Quad' ?
-      mapTermsNested(quad.object, mapper, dataFactory, [ ...keys, 'object' ]) :
-      mapper(quad.object, [ ...keys, 'object' ]),
-    quad.graph.termType === 'Quad' ?
-      mapTermsNested(quad.graph, mapper, dataFactory, [ ...keys, 'graph' ]) :
-      mapper(quad.graph, [ ...keys, 'graph' ]),
-  );
+                                                                  keys: NestedTermKey[] = []): Q {
+  return <Q> mapCompoundTerm(quad, mapper, dataFactory || <RDF.DataFactory<Q>> <any> DF, keys);
+}
+
+function mapCompoundTerm(term: CompoundTerm,
+                         mapper: (term: RDF.Term, keys: NestedTermKey[]) => RDF.Term,
+                         dataFactory: RDF.DataFactory<any>,
+                         keys: NestedTermKey[]): RDF.Term {
+  return buildCompoundTerm(term, getChildTerms(term).map(([ key, child ]) => {
+    const path = [ ...keys, key ];
+    return isCompoundTerm(child) ? mapCompoundTerm(child, mapper, dataFactory, path) : mapper(child, path);
+  }), dataFactory);
 }
 
 /**
@@ -356,7 +352,7 @@ export function reduceTerms<U>(quad: RDF.BaseQuad,
 }
 
 /**
- * Reduce all terms of a quad, while recursing into quoted triples.
+ * Reduce all terms of a quad, while recursing into quoted triples and (RDF-) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(previousValue: U, currentValue: Term, key: QuadTermName) => U} reducer A reduce function.
  * @param {U} initialValue The initial value.
@@ -364,30 +360,13 @@ export function reduceTerms<U>(quad: RDF.BaseQuad,
  * @return {U} The final value.
  */
 export function reduceTermsNested<U>(quad: RDF.BaseQuad,
-                                     reducer: (previousValue: U, currentValue: RDF.Term, keys: QuadTermName[]) => U,
+                                     reducer: (previousValue: U, currentValue: RDF.Term, keys: NestedTermKey[]) => U,
                                      initialValue: U,
-                                     keys: QuadTermName[] = []): U {
+                                     keys: NestedTermKey[] = []): U {
   let value: U = initialValue;
-  if (quad.subject.termType === 'Quad') {
-    value = reduceTermsNested(quad.subject, reducer, value, [ ...keys, 'subject' ]);
-  } else {
-    value = reducer(value, quad.subject,   [ ...keys, 'subject' ]);
-  }
-  if (quad.predicate.termType === 'Quad') {
-    value = reduceTermsNested(quad.predicate, reducer, value, [ ...keys, 'predicate' ]);
-  } else {
-    value = reducer(value, quad.predicate,   [ ...keys, 'predicate' ]);
-  }
-  if (quad.object.termType === 'Quad') {
-    value = reduceTermsNested(quad.object, reducer, value, [ ...keys, 'object' ]);
-  } else {
-    value = reducer(value, quad.object,   [ ...keys, 'object' ]);
-  }
-  if (quad.graph.termType === 'Quad') {
-    value = reduceTermsNested(quad.graph, reducer, value, [ ...keys, 'graph' ]);
-  } else {
-    value = reducer(value, quad.graph,   [ ...keys, 'graph' ]);
-  }
+  forEachTermsNested(quad, (term, path) => {
+    value = reducer(value, term, path);
+  }, keys);
   return value;
 }
 
@@ -406,27 +385,18 @@ export function everyTerms(quad: RDF.BaseQuad,
 }
 
 /**
- * Determines whether all terms satisfy the specified test, while recursing into quoted triples.
+ * Determines whether all terms satisfy the specified test, while recursing into quoted triples and (RDF-) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName} checker A checker function.
  * @param QuadTermName[] keys The current key path.
  * @return {boolean} If all terms satisfy the specified test.
  */
 export function everyTermsNested(quad: RDF.BaseQuad,
-                                 checker: (value: RDF.Term, keys: QuadTermName[]) => boolean,
-                                 keys: QuadTermName[] = []): boolean {
-  return (quad.subject.termType === 'Quad' ?
-    everyTermsNested(quad.subject, checker, [ ...keys, 'subject' ]) :
-    checker(quad.subject, [ ...keys, 'subject' ]))
-    && (quad.predicate.termType === 'Quad' ?
-      everyTermsNested(quad.predicate, checker, [ ...keys, 'predicate' ]) :
-      checker(quad.predicate, [ ...keys, 'predicate' ]))
-    && (quad.object.termType === 'Quad' ?
-      everyTermsNested(quad.object, checker, [ ...keys, 'object' ]) :
-      checker(quad.object, [ ...keys, 'object' ]))
-    && (quad.graph.termType === 'Quad' ?
-      everyTermsNested(quad.graph, checker, [ ...keys, 'graph' ]) :
-      checker(quad.graph, [ ...keys, 'graph' ]))
+                                 checker: (value: RDF.Term, keys: NestedTermKey[]) => boolean,
+                                 keys: NestedTermKey[] = []): boolean {
+  return getChildTerms(quad).every(([ key, child ]) => isCompoundTerm(child) ?
+    everyTermsNested(<RDF.BaseQuad> child, checker, [ ...keys, key ]) :
+    checker(child, [ ...keys, key ]));
 }
 
 /**
@@ -444,42 +414,42 @@ export function someTerms(quad: RDF.BaseQuad,
 }
 
 /**
- * Determines whether at least one term satisfies the specified test, while recursing into quoted triples.
+ * Determines whether at least one term satisfies the specified test, while recursing into quoted triples and (RDF-) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName} checker A checker function.
  * @param QuadTermName[] keys The current key path.
  * @return {boolean} If at least one term satisfies the specified test.
  */
 export function someTermsNested(quad: RDF.BaseQuad,
-                                checker: (value: RDF.Term, keys: QuadTermName[]) => boolean,
-                                keys: QuadTermName[] = []): boolean {
-  return (quad.subject.termType === 'Quad' ?
-      someTermsNested(quad.subject, checker, [ ...keys, 'subject' ]) :
-      checker(quad.subject,   [ ...keys, 'subject' ]))
-    || (quad.predicate.termType === 'Quad' ?
-      someTermsNested(quad.predicate, checker, [ ...keys, 'predicate' ]) :
-      checker(quad.predicate,   [ ...keys, 'predicate' ]))
-    || (quad.object.termType === 'Quad' ?
-      someTermsNested(quad.object, checker, [ ...keys, 'object' ]) :
-      checker(quad.object,   [ ...keys, 'object' ]))
-    || (quad.graph.termType === 'Quad' ?
-      someTermsNested(quad.graph, checker, [ ...keys, 'graph' ]) :
-      checker(quad.graph,   [ ...keys, 'graph' ]));
+                                checker: (value: RDF.Term, keys: NestedTermKey[]) => boolean,
+                                keys: NestedTermKey[] = []): boolean {
+  return getChildTerms(quad).some(([ key, child ]) => isCompoundTerm(child) ?
+    someTermsNested(<RDF.BaseQuad> child, checker, [ ...keys, key ]) :
+    checker(child, [ ...keys, key ]));
 }
 
 /**
- * Get the nested value inside a quoted triple by the given path of quad keys.
- * @param term A term, that can be a quoted triple.
- * @param keys A path of quad term names.
+ * Get the nested value inside a quoted triple or (RDF-) a sequence by the given path of keys.
+ * @param term A term, that can be a quoted triple or a sequence.
+ * @param keys A path of quad term names and sequence element indexes.
  */
-export function getValueNestedPath(term: RDF.Term, keys: QuadTermName[]): RDF.Term {
+export function getValueNestedPath(term: RDF.Term, keys: NestedTermKey[]): RDF.Term {
   if (keys.length === 0) {
     return term;
   }
-  if (term.termType === 'Quad') {
-    return getValueNestedPath(term[keys[0]], keys.slice(1));
+  const [ key, ...rest ] = keys;
+  if (term.termType === 'Quad' && typeof key === 'string') {
+    return getValueNestedPath(term[key], rest);
   }
-  throw new Error(`Tried to get ${keys[0]} from term of type ${term.termType}`);
+  if (term.termType === 'Sequence') {
+    // RDF-: the key is the element index (possibly spelled as a string)
+    const element = term.elements[Number(key)];
+    if (element) {
+      return getValueNestedPath(element, rest);
+    }
+    throw new Error(`Tried to get element ${key} from a sequence of ${term.elements.length} elements`);
+  }
+  throw new Error(`Tried to get ${key} from term of type ${term.termType}`);
 }
 
 /**
@@ -489,16 +459,18 @@ export function getValueNestedPath(term: RDF.Term, keys: QuadTermName[]): RDF.Te
  * * Term B is undefined.
  * * Term B is a variable.
  * * Term A and B are quads, and return true for `matchPatternComplete`.
+ * * (RDF-) Term A and B are sequences, and return true for `matchSequence`.
  * * Quad term and term are equal (`termB.equals(termA)` return true)
  *
  * @param termA A term.
  * @param termB An optional term.
  */
-export function matchTerm(termA: RDF.Term, termB?: RDF.Term) {
-  return !termB
-    || termB.termType === 'Variable'
-    || (termB.termType === 'Quad' && termA.termType === 'Quad' && matchPatternComplete(termA, termB))
-    || termB.equals(termA);
+export function matchTerm(termA: RDF.Term, termB?: RDF.Term): boolean {
+  return !termB ||
+    termB.termType === 'Variable' ||
+    (termB.termType === 'Quad' && termA.termType === 'Quad' && matchPatternComplete(termA, termB)) ||
+    (termB.termType === 'Sequence' && termA.termType === 'Sequence' && matchSequence(termA, termB)) ||
+    termB.equals(termA);
 }
 
 /**
@@ -562,19 +534,23 @@ export function matchPatternMappings(quad: RDF.BaseQuad, pattern: RDF.BaseQuad, 
 export function matchPatternMappings(quad: RDF.BaseQuad, pattern: RDF.BaseQuad, opt: { skipVarMapping?: boolean; returnMappings: true }): false | Record<string, RDF.Term>;
 export function matchPatternMappings(quad: RDF.BaseQuad, pattern: RDF.BaseQuad, opt: PatternOptions = {}): boolean | Record<string, RDF.Term> {
   const map: Record<string, RDF.Term> = {};
+  function matchTerms(t1: RDF.Term, t2: RDF.Term): boolean {
+    switch (t1.termType) {
+    case 'Variable':
+      return ((opt.skipVarMapping ?? false) && t2.termType === 'Variable') ||
+      (map[t1.value]?.equals(t2) ?? (map[t1.value] = t2, true));
+    case 'Quad':
+      return t2.termType === 'Quad' && match(t1, t2);
+    case 'Sequence':
+      // RDF-: element by element, variables inside the pattern's sequence included
+      return t2.termType === 'Sequence' && t1.elements.length === t2.elements.length &&
+        t1.elements.every((element, index) => matchTerms(element, t2.elements[index]));
+    default:
+      return t1.equals(t2);
+    }
+  }
   function match(_pattern: RDF.BaseQuad, _quad: RDF.BaseQuad): boolean {
-    return everyTerms(_pattern, (t1, key) => {
-      const t2 = _quad[key];
-      switch (t1.termType) {
-      case 'Variable':
-        return (opt.skipVarMapping && t2.termType === 'Variable')
-          || (map[t1.value]?.equals(t2) ?? (map[t1.value] = t2, true));
-      case 'Quad':
-        return t2.termType === 'Quad' && match(t1, t2);
-      default:
-        return t1.equals(t2);
-      }
-    });
+    return everyTerms(_pattern, (t1, key) => matchTerms(t1, _quad[key]));
   }
   return match(pattern, quad) && (opt.returnMappings ? map : true);
 }

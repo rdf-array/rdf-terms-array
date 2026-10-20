@@ -251,3 +251,15 @@ describe('TermUtil', () => {
     });
   });
 });
+
+describe('TermUtil for RDF- sequences', () => {
+  it('TERM_TYPES should include Sequence', () => {
+    expect(TermUtil.TERM_TYPES).toContain('Sequence');
+  });
+
+  it('#getSequences should keep only sequences', () => {
+    const sequence = DF.sequence([ DF.namedNode('a') ]);
+    expect(TermUtil.getSequences([ DF.namedNode('a'), sequence, DF.literal('b') ])).toEqual([ sequence ]);
+    expect(TermUtil.getTermsOfType([ sequence ], 'Sequence')).toEqual([ sequence ]);
+  });
+});

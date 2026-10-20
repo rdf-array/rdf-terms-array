@@ -1,3 +1,20 @@
+<img src=".github/rdf-array-logo.png" alt="[rdf-terms]" width="96" align="right">
+
+# rdf-terms-array: rdf-terms for RDF-
+
+**RDF-** fork of [rdf-terms](https://github.com/rubensworks/rdf-terms.js) for a data model whose fifth
+kind of term is the **sequence** (`termType: "Sequence"`, see
+[rdf-data-factory-array](https://github.com/rdf-array/rdf-data-factory-array)). The nested helpers
+(`getTermsNested`, `forEachTermsNested`, `filterTermsNested`, `mapTermsNested`, `reduceTermsNested`,
+`everyTermsNested`, `someTermsNested`, `getValueNestedPath`) descend into sequences as they do into
+quoted triples, with the element index as the path step (`NestedTermKey`); `matchTerm`, `matchPattern`
+and `matchPatternMappings` match a sequence against a sequence pattern element by element, variables
+inside it included; `isCompoundTerm`, `getChildTerms`, `matchSequence` and `getSequences` are new, and
+`TERM_TYPES` knows the term. Part of the [comunica-array](https://github.com/rdf-array/comunica-array)
+stack, whose doc/rdf-array.md lists the sibling forks.
+
+---
+
 # RDF Terms
 
 [![Build status](https://github.com/rubensworks/rdf-terms.js/workflows/CI/badge.svg)](https://github.com/rubensworks/rdf-terms.js/actions?query=workflow%3ACI)
