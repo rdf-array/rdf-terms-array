@@ -90,7 +90,7 @@ function getQuads(terms) {
     return getTermsOfType(terms, 'Quad');
 }
 /**
- * RDF-: get all sequences from the given array.
+ * rdf-array: get all sequences from the given array.
  * @param {Term[]} terms An array of terms of any type.
  * @return {Sequence[]} A new array with elements from the given array only containing sequences.
  */

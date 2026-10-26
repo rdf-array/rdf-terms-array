@@ -996,7 +996,7 @@ describe('QuadTermUtil', () => {
   });
 });
 
-describe('QuadTermUtil for RDF- sequences', () => {
+describe('QuadTermUtil for rdf-array sequences', () => {
   const inner = DF.sequence([ DF.literal('e10'), DF.variable('v') ]);
   const seq = DF.sequence([ DF.namedNode('e0'), inner, DF.blankNode('b') ]);
   const quadWithSeq: RDF.BaseQuad = DF.quad(DF.namedNode('s'), DF.namedNode('p'), seq, DF.namedNode('g'));

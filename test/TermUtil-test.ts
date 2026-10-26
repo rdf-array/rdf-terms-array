@@ -252,7 +252,7 @@ describe('TermUtil', () => {
   });
 });
 
-describe('TermUtil for RDF- sequences', () => {
+describe('TermUtil for rdf-array sequences', () => {
   it('TERM_TYPES should include Sequence', () => {
     expect(TermUtil.TERM_TYPES).toContain('Sequence');
   });

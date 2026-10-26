@@ -5,4 +5,4 @@ yarn-error.log
 coverage
 documentation
 
-# RDF-: the build output under dist/ is committed, so that a git install works under yarn 1 (which runs no prepare script)
+# rdf-array: the build output under dist/ is committed, so that a git install works under yarn 1 (which runs no prepare script)

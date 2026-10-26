@@ -25,18 +25,18 @@ export const QUAD_TERM_NAMES: QuadTermName[] = ['subject', 'predicate', 'object'
 export const TRIPLE_TERM_NAMES: QuadTermName[] = ['subject', 'predicate', 'object'];
 
 /**
- * RDF-: a step in a path into a nested term:
+ * rdf-array: a step in a path into a nested term:
  * a quad term name inside a quoted triple, or an element index inside a sequence.
  */
 export type NestedTermKey = QuadTermName | number;
 
 /**
- * RDF-: a term that holds other terms: a quoted triple or a sequence.
+ * rdf-array: a term that holds other terms: a quoted triple or a sequence.
  */
 export type CompoundTerm = RDF.BaseQuad | RDF.Sequence;
 
 /**
- * RDF-: check whether a term holds other terms (a quoted triple or a sequence).
+ * rdf-array: check whether a term holds other terms (a quoted triple or a sequence).
  * @param {Term} term An RDFJS term.
  */
 export function isCompoundTerm(term: RDF.Term): term is CompoundTerm {
@@ -44,7 +44,7 @@ export function isCompoundTerm(term: RDF.Term): term is CompoundTerm {
 }
 
 /**
- * RDF-: the direct children of a quoted triple or a sequence, each with its key.
+ * rdf-array: the direct children of a quoted triple or a sequence, each with its key.
  * @param {CompoundTerm} term A quoted triple or a sequence.
  */
 export function getChildTerms(term: CompoundTerm): [NestedTermKey, RDF.Term][] {
@@ -54,7 +54,7 @@ export function getChildTerms(term: CompoundTerm): [NestedTermKey, RDF.Term][] {
 }
 
 /**
- * RDF-: rebuild a quoted triple or a sequence from (mapped) children, in the order of {@link getChildTerms}.
+ * rdf-array: rebuild a quoted triple or a sequence from (mapped) children, in the order of {@link getChildTerms}.
  */
 function buildCompoundTerm(term: CompoundTerm, children: RDF.Term[], dataFactory: RDF.DataFactory<any>): RDF.Term {
   if (term.termType === 'Quad') {
@@ -67,7 +67,7 @@ function buildCompoundTerm(term: CompoundTerm, children: RDF.Term[], dataFactory
 }
 
 /**
- * RDF-: a sequence matches a sequence pattern of the same length whose elements each match
+ * rdf-array: a sequence matches a sequence pattern of the same length whose elements each match
  * (see {@link matchTerm}).
  * @param {Sequence} sequence A sequence (can not contain variables).
  * @param {Sequence} pattern A sequence pattern (can contain variables).
@@ -187,7 +187,7 @@ export function forEachTerms(quad: RDF.BaseQuad,
 }
 
 /**
- * Iterates over each leaf term, while recursing into quoted triples and (RDF-) sequences.
+ * Iterates over each leaf term, while recursing into quoted triples and (rdf-array) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName} cb A callback function.
  * @param QuadTermName[] keys The current key path.
@@ -229,7 +229,7 @@ export function filterTerms(quad: RDF.BaseQuad, filter: (value: RDF.Term, key: Q
 }
 
 /**
- * Get all terms in the given quad that return true on the given filter function, while recursing into quoted triples and (RDF-) sequences.
+ * Get all terms in the given quad that return true on the given filter function, while recursing into quoted triples and (rdf-array) sequences.
  * @param {BaseQuad} quad A quad.
  * @param {(value: Term, key: QuadTermName) => boolean} filter A filter callback.
  * @param QuadTermName[] keys The current key path.
@@ -271,7 +271,7 @@ export function filterQuadTermNames(quad: RDF.BaseQuad,
 }
 
 /**
- * Get all quad term names in the given quad that return true on the given filter function, while recursing into quoted triples and (RDF-) sequences.
+ * Get all quad term names in the given quad that return true on the given filter function, while recursing into quoted triples and (rdf-array) sequences.
  * @param {BaseQuad} quad A quad.
  * @param {(value: Term, key: QuadTermName, all: INamedTerm[]) => boolean} filter A filter callback.
  * @param QuadTermName[] keys The current key path.
@@ -309,7 +309,7 @@ export function mapTerms<Q extends RDF.BaseQuad = RDF.Quad>(quad: Q,
 }
 
 /**
- * Map all terms of a quad, while recursing into quoted triples and (RDF-) sequences.
+ * Map all terms of a quad, while recursing into quoted triples and (rdf-array) sequences.
  * @param {Quad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName) => Term} mapper A mapper function.
  * @param {RDF.DataFactory} dataFactory A custom data factory to create quads.
@@ -352,7 +352,7 @@ export function reduceTerms<U>(quad: RDF.BaseQuad,
 }
 
 /**
- * Reduce all terms of a quad, while recursing into quoted triples and (RDF-) sequences.
+ * Reduce all terms of a quad, while recursing into quoted triples and (rdf-array) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(previousValue: U, currentValue: Term, key: QuadTermName) => U} reducer A reduce function.
  * @param {U} initialValue The initial value.
@@ -385,7 +385,7 @@ export function everyTerms(quad: RDF.BaseQuad,
 }
 
 /**
- * Determines whether all terms satisfy the specified test, while recursing into quoted triples and (RDF-) sequences.
+ * Determines whether all terms satisfy the specified test, while recursing into quoted triples and (rdf-array) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName} checker A checker function.
  * @param QuadTermName[] keys The current key path.
@@ -414,7 +414,7 @@ export function someTerms(quad: RDF.BaseQuad,
 }
 
 /**
- * Determines whether at least one term satisfies the specified test, while recursing into quoted triples and (RDF-) sequences.
+ * Determines whether at least one term satisfies the specified test, while recursing into quoted triples and (rdf-array) sequences.
  * @param {BaseQuad} quad An RDFJS quad.
  * @param {(value: Term, key: QuadTermName} checker A checker function.
  * @param QuadTermName[] keys The current key path.
@@ -429,7 +429,7 @@ export function someTermsNested(quad: RDF.BaseQuad,
 }
 
 /**
- * Get the nested value inside a quoted triple or (RDF-) a sequence by the given path of keys.
+ * Get the nested value inside a quoted triple or (rdf-array) a sequence by the given path of keys.
  * @param term A term, that can be a quoted triple or a sequence.
  * @param keys A path of quad term names and sequence element indexes.
  */
@@ -442,7 +442,7 @@ export function getValueNestedPath(term: RDF.Term, keys: NestedTermKey[]): RDF.T
     return getValueNestedPath(term[key], rest);
   }
   if (term.termType === 'Sequence') {
-    // RDF-: the key is the element index (possibly spelled as a string)
+    // rdf-array: the key is the element index (possibly spelled as a string)
     const element = term.elements[Number(key)];
     if (element) {
       return getValueNestedPath(element, rest);
@@ -459,7 +459,7 @@ export function getValueNestedPath(term: RDF.Term, keys: NestedTermKey[]): RDF.T
  * * Term B is undefined.
  * * Term B is a variable.
  * * Term A and B are quads, and return true for `matchPatternComplete`.
- * * (RDF-) Term A and B are sequences, and return true for `matchSequence`.
+ * * (rdf-array) Term A and B are sequences, and return true for `matchSequence`.
  * * Quad term and term are equal (`termB.equals(termA)` return true)
  *
  * @param termA A term.
@@ -542,7 +542,7 @@ export function matchPatternMappings(quad: RDF.BaseQuad, pattern: RDF.BaseQuad, 
     case 'Quad':
       return t2.termType === 'Quad' && match(t1, t2);
     case 'Sequence':
-      // RDF-: element by element, variables inside the pattern's sequence included
+      // rdf-array: element by element, variables inside the pattern's sequence included
       return t2.termType === 'Sequence' && t1.elements.length === t2.elements.length &&
         t1.elements.every((element, index) => matchTerms(element, t2.elements[index]));
     default:

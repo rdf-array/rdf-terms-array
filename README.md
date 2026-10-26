@@ -1,6 +1,6 @@
 <img src=".github/rdf-array-logo.png" alt="[rdf-terms]" width="96" align="right">
 
-# rdf-terms-array: rdf-terms for RDF-
+# rdf-terms-array: rdf-terms for rdf-array
 
 **RDF-** fork of [rdf-terms](https://github.com/rubensworks/rdf-terms.js) for a data model whose fifth
 kind of term is the **sequence** (`termType: "Sequence"`, see
