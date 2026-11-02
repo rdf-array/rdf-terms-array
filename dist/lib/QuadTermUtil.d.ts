@@ -29,12 +29,13 @@ export type CompoundTerm = RDF.BaseQuad | RDF.Sequence;
 export declare function isCompoundTerm(term: RDF.Term): term is CompoundTerm;
 /**
  * rdf-array: the direct children of a quoted triple or a sequence, each with its key.
+ * rdf-undef: a slot of a sequence holds no term, so it is no child; the others keep their positions as keys.
  * @param {CompoundTerm} term A quoted triple or a sequence.
  */
 export declare function getChildTerms(term: CompoundTerm): [NestedTermKey, RDF.Term][];
 /**
  * rdf-array: a sequence matches a sequence pattern of the same length whose elements each match
- * (see {@link matchTerm}).
+ * (see {@link matchTerm}). rdf-undef: a variable matches a slot, and `undef` in a pattern matches only a slot.
  * @param {Sequence} sequence A sequence (can not contain variables).
  * @param {Sequence} pattern A sequence pattern (can contain variables).
  */
@@ -213,10 +214,10 @@ export declare function getValueNestedPath(term: RDF.Term, keys: NestedTermKey[]
  * * (rdf-array) Term A and B are sequences, and return true for `matchSequence`.
  * * Quad term and term are equal (`termB.equals(termA)` return true)
  *
- * @param termA A term.
- * @param termB An optional term.
+ * @param termA A term, or a slot of a sequence.
+ * @param termB An optional term, or a slot of a sequence.
  */
-export declare function matchTerm(termA: RDF.Term, termB?: RDF.Term): boolean;
+export declare function matchTerm(termA: RDF.SequenceElement, termB?: RDF.SequenceElement): boolean;
 /**
  * Check if the given quad matches with the given quad terms.
  *

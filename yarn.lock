@@ -512,9 +512,9 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@rdfjs/types@^2.0.0", "@rdfjs/types@github:rdf-array/types-array#rdf-sequences":
+"@rdfjs/types@^2.0.0", "@rdfjs/types@github:rdf-array/types-array#rdf-undef":
   version "2.0.1"
-  resolved "https://codeload.github.com/rdf-array/types-array/tar.gz/0091f8364f5d1fd2969dc83627d22435469dda7c"
+  resolved "https://codeload.github.com/rdf-array/types-array/tar.gz/4dd00611935079dd3bf6d2a08e0cada9fbbc80b2"
   dependencies:
     "@types/node" "*"
 
@@ -2667,17 +2667,17 @@ quick-lru@^4.0.1:
   resolved "https://registry.yarnpkg.com/quick-lru/-/quick-lru-4.0.1.tgz#5b8878f113a58217848c6482026c73e1ba57727f"
   integrity sha512-ARhCpm70fzdcvNQfPoy49IaanKkTlRWF2JMzqhcJbhSFRZv7nPTvZJdcY7301IPmvW+/p0RgIWnQDLJxifsQ7g==
 
-"rdf-data-factory@github:rdf-array/rdf-data-factory-array#rdf-sequences":
+"rdf-data-factory@github:rdf-array/rdf-data-factory-array#rdf-undef":
   version "2.1.0"
-  resolved "https://codeload.github.com/rdf-array/rdf-data-factory-array/tar.gz/6912f4ceb763bf4d3a23f44b4d3e43a7f8f52903"
+  resolved "https://codeload.github.com/rdf-array/rdf-data-factory-array/tar.gz/c88097c1fa447d5c0932d5b24579073811a348c0"
   dependencies:
     "@rdfjs/types" "^2.0.0"
 
-"rdf-string@github:rdf-array/rdf-string-array#rdf-sequences":
+"rdf-string@github:rdf-array/rdf-string-array#rdf-undef":
   version "2.0.1"
-  resolved "https://codeload.github.com/rdf-array/rdf-string-array/tar.gz/6398fd15bce53eefc4435dd1b22a3b458b74a841"
+  resolved "https://codeload.github.com/rdf-array/rdf-string-array/tar.gz/60c077ec153be89a253dc05539c151e3639dbaf6"
   dependencies:
-    rdf-data-factory "github:rdf-array/rdf-data-factory-array#rdf-sequences"
+    rdf-data-factory "github:rdf-array/rdf-data-factory-array#rdf-undef"
 
 react-is@^18.0.0:
   version "18.3.1"

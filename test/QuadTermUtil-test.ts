@@ -1172,4 +1172,58 @@ describe('QuadTermUtil for rdf-array sequences', () => {
         DF.quad(DF.namedNode('s'), DF.namedNode('p'), DF.literal('x')), pattern)).toBe(false);
     });
   });
+
+  describe('rdf-undef slots', () => {
+    const slot = DF.undef();
+    const one = DF.literal('1');
+    const two = DF.literal('2');
+    const v = DF.variable('v');
+    const s = DF.namedNode('ex:s');
+    const p = DF.namedNode('ex:p');
+    const quad = (object: RDF.Quad_Object) => DF.quad(s, p, object);
+
+    it('should not count a slot as a child, and keep positions as keys', () => {
+      expect(QuadTermUtil.getChildTerms(DF.sequence([ slot, one ]))).toEqual([ [ 1, one ]]);
+      expect(QuadTermUtil.getTermsNested(quad(DF.sequence([ slot, DF.sequence([ slot, one ]) ])), true))
+        .toEqual([ s, p, one ]);
+    });
+
+    it('should keep slots in place when mapping', () => {
+      const mapped = QuadTermUtil.mapTermsNested(quad(DF.sequence([ one, slot, DF.sequence([ slot, one ]) ])),
+        term => term.equals(one) ? two : term);
+      expect(mapped.object.equals(DF.sequence([ two, slot, DF.sequence([ slot, two ]) ]))).toBe(true);
+    });
+
+    it('should not read a path into a slot', () => {
+      expect(() => QuadTermUtil.getValueNestedPath(DF.sequence([ slot ]), [ 0 ])).toThrow('Tried to get element 0');
+    });
+
+    it('should match a variable with a slot and undef only with a slot', () => {
+      expect(QuadTermUtil.matchTerm(DF.sequence([ one, slot ]), DF.sequence([ one, v ]))).toBe(true);
+      expect(QuadTermUtil.matchTerm(DF.sequence([ one, slot ]), DF.sequence([ one, slot ]))).toBe(true);
+      expect(QuadTermUtil.matchTerm(DF.sequence([ one, two ]), DF.sequence([ one, slot ]))).toBe(false);
+      expect(QuadTermUtil.matchTerm(DF.sequence([ one, slot ]), DF.sequence([ one, two ]))).toBe(false);
+      expect(QuadTermUtil.matchTerm(DF.sequence([ slot ]), DF.sequence([ DF.sequence([]) ]))).toBe(false);
+    });
+
+    it('should leave a variable at a slot unbound in the mappings', () => {
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ one, slot ])), quad(DF.sequence([ v, DF.variable('w') ])),
+        { returnMappings: true })).toEqual({ v: one });
+    });
+
+    it('should match a repeated variable through a slot, either way round', () => {
+      const pattern = quad(DF.sequence([ v, v ]));
+      const options: { returnMappings: true } = { returnMappings: true };
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ one, slot ])), pattern, options)).toEqual({ v: one });
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ slot, one ])), pattern, options)).toEqual({ v: one });
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ slot, slot ])), pattern, options)).toEqual({});
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ one, two ])), pattern, options)).toBe(false);
+    });
+
+    it('should not match a constant with a slot, nor undef with a value, in the mappings', () => {
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ slot ])), quad(DF.sequence([ one ])))).toBe(false);
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ one ])), quad(DF.sequence([ slot ])))).toBe(false);
+      expect(QuadTermUtil.matchPatternMappings(quad(DF.sequence([ slot ])), quad(DF.sequence([ slot ])))).toBe(true);
+    });
+  });
 });

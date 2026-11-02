@@ -48,12 +48,13 @@ function isCompoundTerm(term) {
 }
 /**
  * rdf-array: the direct children of a quoted triple or a sequence, each with its key.
+ * rdf-undef: a slot of a sequence holds no term, so it is no child; the others keep their positions as keys.
  * @param {CompoundTerm} term A quoted triple or a sequence.
  */
 function getChildTerms(term) {
     return term.termType === 'Quad' ?
         exports.QUAD_TERM_NAMES.map((key) => [key, term[key]]) :
-        term.elements.map((element, index) => [index, element]);
+        term.elements.flatMap((element, index) => element.termType === 'Undef' ? [] : [[index, element]]);
 }
 /**
  * rdf-array: rebuild a quoted triple or a sequence from (mapped) children, in the order of {@link getChildTerms}.
@@ -65,11 +66,13 @@ function buildCompoundTerm(term, children, dataFactory) {
     if (!dataFactory.sequence) {
         throw new Error(`Missing 'sequence()' method on the given DataFactory`);
     }
-    return dataFactory.sequence(children);
+    // rdf-undef: the slots stay where they are, around the children
+    let next = 0;
+    return dataFactory.sequence(term.elements.map(element => element.termType === 'Undef' ? element : children[next++]));
 }
 /**
  * rdf-array: a sequence matches a sequence pattern of the same length whose elements each match
- * (see {@link matchTerm}).
+ * (see {@link matchTerm}). rdf-undef: a variable matches a slot, and `undef` in a pattern matches only a slot.
  * @param {Sequence} sequence A sequence (can not contain variables).
  * @param {Sequence} pattern A sequence pattern (can contain variables).
  */
@@ -379,7 +382,7 @@ function getValueNestedPath(term, keys) {
     if (term.termType === 'Sequence') {
         // rdf-array: the key is the element index (possibly spelled as a string)
         const element = term.elements[Number(key)];
-        if (element) {
+        if (element && element.termType !== 'Undef') {
             return getValueNestedPath(element, rest);
         }
         throw new Error(`Tried to get element ${key} from a sequence of ${term.elements.length} elements`);
@@ -396,8 +399,8 @@ function getValueNestedPath(term, keys) {
  * * (rdf-array) Term A and B are sequences, and return true for `matchSequence`.
  * * Quad term and term are equal (`termB.equals(termA)` return true)
  *
- * @param termA A term.
- * @param termB An optional term.
+ * @param termA A term, or a slot of a sequence.
+ * @param termB An optional term, or a slot of a sequence.
  */
 function matchTerm(termA, termB) {
     return !termB ||
@@ -448,7 +451,8 @@ function matchPatternMappings(quad, pattern, opt = {}) {
         var _a, _b, _c;
         switch (t1.termType) {
             case 'Variable':
-                return (((_a = opt.skipVarMapping) !== null && _a !== void 0 ? _a : false) && t2.termType === 'Variable') ||
+                // rdf-undef: a variable at a slot stays unbound, and a repeated one takes its value from another position
+                return t2.termType === 'Undef' || (((_a = opt.skipVarMapping) !== null && _a !== void 0 ? _a : false) && t2.termType === 'Variable') ||
                     ((_c = (_b = map[t1.value]) === null || _b === void 0 ? void 0 : _b.equals(t2)) !== null && _c !== void 0 ? _c : (map[t1.value] = t2, true));
             case 'Quad':
                 return t2.termType === 'Quad' && match(t1, t2);

@@ -33,8 +33,8 @@
     "test"
   ],
   "dependencies": {
-    "rdf-data-factory": "github:rdf-array/rdf-data-factory-array#rdf-sequences",
-    "rdf-string": "github:rdf-array/rdf-string-array#rdf-sequences"
+    "rdf-data-factory": "github:rdf-array/rdf-data-factory-array#rdf-undef",
+    "rdf-string": "github:rdf-array/rdf-string-array#rdf-undef"
   },
   "devDependencies": {
     "@types/jest": "^28.0.0",
@@ -84,9 +84,9 @@
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "resolutions": {
-    "@rdfjs/types": "github:rdf-array/types-array#rdf-sequences",
-    "rdf-data-factory": "github:rdf-array/rdf-data-factory-array#rdf-sequences",
-    "rdf-string": "github:rdf-array/rdf-string-array#rdf-sequences"
+    "@rdfjs/types": "github:rdf-array/types-array#rdf-undef",
+    "rdf-data-factory": "github:rdf-array/rdf-data-factory-array#rdf-undef",
+    "rdf-string": "github:rdf-array/rdf-string-array#rdf-undef"
   },
   "types": "dist/index.d.ts"
 }

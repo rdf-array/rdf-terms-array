@@ -13,6 +13,11 @@ inside it included; `isCompoundTerm`, `getChildTerms`, `matchSequence` and `getS
 `TERM_TYPES` knows the term. Part of the [comunica-array](https://github.com/rdf-array/comunica-array)
 stack, whose doc/rdf-array.md lists the sibling forks.
 
+**rdf-undef** (branch `rdf-undef`, [rdf-undef.md](https://github.com/rdf-array/rdf-array/blob/rdf-undef/docs/rdf-undef.md)): a
+slot of a sequence is no child term, so `getChildTerms` and the nested helpers skip it while `mapTermsNested` keeps it in
+place. `matchTerm`, `matchSequence`: a variable matches a slot, `undef` matches only a slot, a constant never does.
+`matchPatternMappings`: a variable at a slot stays unbound. Status: done, tests in `test/QuadTermUtil-test.ts`.
+
 ---
 
 # RDF Terms
